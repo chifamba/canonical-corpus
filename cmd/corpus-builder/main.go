@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/chifamba/canonical-corpus/internal/compiler"
@@ -149,18 +148,7 @@ func selectBooks(category string) []metadata.BookMeta {
 	}
 }
 
-// sanitizeForPath converts a title to a filesystem-safe slug.
-func sanitizeForPath(title string) string {
-	title = strings.ToLower(title)
-	title = strings.ReplaceAll(title, " ", "-")
-	var b strings.Builder
-	for _, r := range title {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
+
 
 // ---------------------------------------------------------------------------
 // Subcommands
@@ -176,7 +164,7 @@ func buildCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer logger.Sync() //nolint:errcheck
+			defer func() { _ = logger.Sync() }()
 
 			comp := buildDeps(logger)
 			books := selectBooks(category)
@@ -201,7 +189,7 @@ func fetchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer logger.Sync() //nolint:errcheck
+			defer func() { _ = logger.Sync() }()
 
 			rl := ratelimiter.New(cfg.RateLimiter.MaxRequestsPerHost, cfg.RateLimiter.GlobalConcurrency)
 			dl := downloader.New(downloader.Config{
@@ -245,12 +233,12 @@ func verifyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer logger.Sync() //nolint:errcheck
+			defer func() { _ = logger.Sync() }()
 
 			books := sources.AllBooks()
 			missing := 0
 			for _, book := range books {
-				dirName := fmt.Sprintf("%03d-%s", book.CanonicalOrder, sanitizeForPath(book.Title))
+				dirName := fmt.Sprintf("%03d-%s", book.CanonicalOrder, markdown.SanitizeTitle(book.Title))
 				path := fmt.Sprintf("%s/%s/%s/en.md",
 					cfg.Output.BaseDir, string(book.Category), dirName)
 				if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -281,7 +269,7 @@ func exportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer logger.Sync() //nolint:errcheck
+			defer func() { _ = logger.Sync() }()
 
 			logger.Info("exporting corpus",
 				zap.String("source", cfg.Output.BaseDir),

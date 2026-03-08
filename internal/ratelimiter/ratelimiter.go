@@ -7,7 +7,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// RateLimiter controls request rates using token bucket per host.
+// RateLimiter controls request rates using a token bucket per host and enforces global concurrency limits.
 type RateLimiter struct {
 	limiters   sync.Map
 	maxPerHost float64
