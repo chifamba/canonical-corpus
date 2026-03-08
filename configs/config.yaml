@@ -1,0 +1,30 @@
+downloader:
+  max_retries: 5
+  timeout: 30s
+  user_agent: "CorpusBuilder/1.0 (+https://github.com/chifamba/canonical-corpus)"
+
+rate_limiter:
+  max_requests_per_host: 2
+  global_concurrency: 10
+
+output:
+  base_dir: "./corpus"
+
+logging:
+  level: "info"
+  file: "./logs/corpus-builder.log"
+
+# API keys for copyrighted Bible translations.
+# Set the corresponding environment variables before running the corpus builder.
+#
+# ESV (English Standard Version):
+#   Register at https://api.esv.org/ and set:
+#   export ESV_API_KEY=your_token_here
+#
+# NIV (New International Version) via Scripture API Bible:
+#   Register at https://scripture.api.bible and set:
+#   export BIBLE_API_KEY=your_key_here
+#
+# Note: The corpus builder will log a warning and skip authentication
+# if these environment variables are not set, which may result in
+# HTTP 403 errors from the respective APIs.
