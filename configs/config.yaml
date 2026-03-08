@@ -1,0 +1,15 @@
+downloader:
+  max_retries: 5
+  timeout: 30s
+  user_agent: "CorpusBuilder/1.0 (+https://github.com/chifamba/canonical-corpus)"
+
+rate_limiter:
+  max_requests_per_host: 2
+  global_concurrency: 10
+
+output:
+  base_dir: "./corpus"
+
+logging:
+  level: "info"
+  file: "./logs/corpus-builder.log"
