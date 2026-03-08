@@ -123,13 +123,36 @@ var canonicalBooks = []metadata.BookMeta{
 }
 
 // ---------------------------------------------------------------------------
-// Extra-Canonical / Deuterocanonical Books
+// Extra-Canonical / Deuterocanonical / Ethiopian Books (25 books)
 // ---------------------------------------------------------------------------
 
 var extraCanonicalBooks = []metadata.BookMeta{
 	{
-		Title:          "Tobit",
+		Title:          "Enoch",
 		CanonicalOrder: 1,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "1 Enoch; canonical in the Ethiopian Orthodox Tewahedo Church.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/boo/enoch.htm"),
+			gutenberg("30379/30379.txt"),
+		},
+	},
+	{
+		Title:          "Jubilees",
+		CanonicalOrder: 2,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Book of Jubilees; canonical in the Ethiopian Orthodox Tewahedo Church.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/boo/jubilees.htm"),
+		},
+	},
+	{
+		Title:          "Tobit",
+		CanonicalOrder: 3,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
@@ -141,7 +164,7 @@ var extraCanonicalBooks = []metadata.BookMeta{
 	},
 	{
 		Title:          "Judith",
-		CanonicalOrder: 2,
+		CanonicalOrder: 4,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
@@ -149,30 +172,6 @@ var extraCanonicalBooks = []metadata.BookMeta{
 		Sources: []metadata.SourceRef{
 			sacredTexts("chr/apo/judith.htm"),
 			wikisource("Judith_(Douay-Rheims)"),
-		},
-	},
-	{
-		Title:          "1 Maccabees",
-		CanonicalOrder: 3,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Deuterocanonical; accepted by Catholic and Orthodox canons.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/1macc.htm"),
-			wikisource("I_Maccabees_(Douay-Rheims)"),
-		},
-	},
-	{
-		Title:          "2 Maccabees",
-		CanonicalOrder: 4,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Deuterocanonical; accepted by Catholic and Orthodox canons.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/2macc.htm"),
-			wikisource("II_Maccabees_(Douay-Rheims)"),
 		},
 	},
 	{
@@ -188,12 +187,12 @@ var extraCanonicalBooks = []metadata.BookMeta{
 		},
 	},
 	{
-		Title:          "Sirach (Ecclesiasticus)",
+		Title:          "Sirach",
 		CanonicalOrder: 6,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Deuterocanonical; accepted by Catholic and Orthodox canons.",
+		Notes:          "Ecclesiasticus; deuterocanonical book accepted by Catholic and Orthodox canons.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("chr/apo/ecclus.htm"),
 			wikisource("Ecclesiasticus_(Douay-Rheims)"),
@@ -212,8 +211,19 @@ var extraCanonicalBooks = []metadata.BookMeta{
 		},
 	},
 	{
-		Title:          "1 Esdras",
+		Title:          "Letter of Jeremiah",
 		CanonicalOrder: 8,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Often treated as chapter 6 of Baruch.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/apo/LetterJeremiah.htm"),
+		},
+	},
+	{
+		Title:          "1 Esdras",
+		CanonicalOrder: 9,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
@@ -224,7 +234,7 @@ var extraCanonicalBooks = []metadata.BookMeta{
 	},
 	{
 		Title:          "2 Esdras",
-		CanonicalOrder: 9,
+		CanonicalOrder: 10,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
@@ -234,8 +244,69 @@ var extraCanonicalBooks = []metadata.BookMeta{
 		},
 	},
 	{
+		Title:          "1 Meqabyan",
+		CanonicalOrder: 11,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; first book of Meqabyan (distinct from 1 Maccabees).",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/apo/1macc.htm"),
+		},
+	},
+	{
+		Title:          "2 Meqabyan",
+		CanonicalOrder: 12,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; second book of Meqabyan.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/apo/2macc.htm"),
+		},
+	},
+	{
+		Title:          "3 Meqabyan",
+		CanonicalOrder: 13,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; third book of Meqabyan.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/apo/3macc.htm"),
+		},
+	},
+	{
+		Title:          "Tegsats",
+		CanonicalOrder: 14,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; part of the narrower canon.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Portal for Ethiopian Orthodox canonical texts.",
+			},
+		},
+	},
+	{
+		Title:          "Josippon",
+		CanonicalOrder: 15,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Medieval Hebrew chronicle; included in the Ethiopian Orthodox broader canon.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("jud/josephus/index.htm"),
+		},
+	},
+	{
 		Title:          "Prayer of Manasseh",
-		CanonicalOrder: 10,
+		CanonicalOrder: 16,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
@@ -245,229 +316,248 @@ var extraCanonicalBooks = []metadata.BookMeta{
 		},
 	},
 	{
-		Title:          "Book of Enoch",
-		CanonicalOrder: 11,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Canonical in Ethiopian Orthodox Tewahedo Church.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/boo/enoch.htm"),
-			gutenberg("30379/30379.txt"),
-		},
-	},
-	{
-		Title:          "Book of Jubilees",
-		CanonicalOrder: 12,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Canonical in Ethiopian Orthodox Tewahedo Church.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/boo/jubilees.htm"),
-		},
-	},
-	{
-		Title:          "Letter of Jeremiah",
-		CanonicalOrder: 13,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Often treated as chapter 6 of Baruch.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/LetterJeremiah.htm"),
-		},
-	},
-	{
-		Title:          "Prayer of Azariah",
-		CanonicalOrder: 14,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Addition to Daniel; included in Catholic and Orthodox canons.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/azariah.htm"),
-		},
-	},
-	{
-		Title:          "Susanna",
-		CanonicalOrder: 15,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Addition to Daniel; included in Catholic and Orthodox canons.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/susanna.htm"),
-		},
-	},
-	{
-		Title:          "Bel and the Dragon",
-		CanonicalOrder: 16,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Addition to Daniel; included in Catholic and Orthodox canons.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/bel.htm"),
-		},
-	},
-	{
-		Title:          "3 Maccabees",
+		Title:          "Psalm 151",
 		CanonicalOrder: 17,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Canonical in Greek and Russian Orthodox traditions.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/3macc.htm"),
-		},
-	},
-	{
-		Title:          "4 Maccabees",
-		CanonicalOrder: 18,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Appendix to Greek Orthodox Bible.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/4macc.htm"),
-		},
-	},
-	{
-		Title:          "Psalm 151",
-		CanonicalOrder: 19,
-		Category:       metadata.CategoryExtraCanonical,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Found in Septuagint; canonical in Orthodox traditions.",
+		Notes:          "Found in the Septuagint and Dead Sea Scrolls; canonical in Orthodox traditions.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("chr/apo/ps151.htm"),
 		},
 	},
 	{
-		Title:          "Book of Odes",
+		Title:          "Sirate Tsion",
+		CanonicalOrder: 18,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; \"Order of Zion\".",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Tizaz",
+		CanonicalOrder: 19,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; part of the broader Haile Selassie Bible.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Gitsiw",
 		CanonicalOrder: 20,
 		Category:       metadata.CategoryExtraCanonical,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Appendix to the Psalms in some Septuagint manuscripts.",
+		Notes:          "Ethiopian Orthodox canon.",
 		Sources: []metadata.SourceRef{
-			sacredTexts("chr/apo/odes.htm"),
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Abtilis",
+		CanonicalOrder: 21,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Metsihafe Kidan I",
+		CanonicalOrder: 22,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; \"Book of the Covenant\" part I.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Metsihafe Kidan II",
+		CanonicalOrder: 23,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; \"Book of the Covenant\" part II.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Qalëmentos",
+		CanonicalOrder: 24,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; Clementine literature.",
+		Sources: []metadata.SourceRef{
+			{
+				URL:      "https://en.wikisource.org/wiki/Portal:Ethiopian_Orthodox_canon",
+				Format:   "html",
+				Language: "en",
+				License:  "Public Domain",
+				Notes:    "Ethiopian Orthodox broader canon portal.",
+			},
+		},
+	},
+	{
+		Title:          "Didesqelya",
+		CanonicalOrder: 25,
+		Category:       metadata.CategoryExtraCanonical,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "Ethiopian Orthodox canon; related to the Didascalia Apostolorum.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("chr/ecf/007/0070193.htm"),
 		},
 	},
 }
 
 // ---------------------------------------------------------------------------
-// Dead Sea Scrolls (major English-translated texts)
+// Dead Sea Scrolls (9 major English-translated texts)
 // ---------------------------------------------------------------------------
 
 var deadSeaScrollsBooks = []metadata.BookMeta{
 	{
-		Title:          "The Community Rule (1QS)",
+		Title:          "Introduction to the Dead Sea Scrolls",
 		CanonicalOrder: 1,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Serekh ha-Yahad; foundational Qumran community document.",
+		Notes:          "Overview and introduction to the Dead Sea Scrolls corpus.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("jud/dss/dss01.htm"),
+		},
+	},
+	{
+		Title:          "Community Rule",
+		CanonicalOrder: 2,
+		Category:       metadata.CategoryDeadSeaScrolls,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "1QS — Serekh ha-Yahad; foundational Qumran community document.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss03.htm"),
 		},
 	},
 	{
-		Title:          "The War Scroll (1QM)",
-		CanonicalOrder: 2,
+		Title:          "War Scroll",
+		CanonicalOrder: 3,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Describes eschatological war between Sons of Light and Sons of Darkness.",
+		Notes:          "1QM — describes eschatological war between Sons of Light and Sons of Darkness.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss04.htm"),
 		},
 	},
 	{
-		Title:          "The Thanksgiving Hymns (1QH)",
-		CanonicalOrder: 3,
+		Title:          "Thanksgiving Hymns",
+		CanonicalOrder: 4,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Hodayot; collection of hymns from Qumran.",
+		Notes:          "1QH — Hodayot; collection of hymns from Qumran.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss05.htm"),
 		},
 	},
 	{
-		Title:          "The Damascus Document (CD)",
-		CanonicalOrder: 4,
-		Category:       metadata.CategoryDeadSeaScrolls,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Legal text governing community life.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("jud/dss/dss06.htm"),
-		},
-	},
-	{
-		Title:          "The Genesis Apocryphon (1QapGen)",
+		Title:          "Temple Scroll",
 		CanonicalOrder: 5,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Aramaic retelling and expansion of Genesis narratives.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("jud/dss/dss07.htm"),
-		},
-	},
-	{
-		Title:          "The Temple Scroll (11QT)",
-		CanonicalOrder: 6,
-		Category:       metadata.CategoryDeadSeaScrolls,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Longest Dead Sea Scroll; describes an ideal Temple and laws.",
+		Notes:          "11QT — longest Dead Sea Scroll; describes an ideal Temple and laws.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss08.htm"),
 		},
 	},
 	{
-		Title:          "The Pesher Habakkuk (1QpHab)",
+		Title:          "Genesis Apocryphon",
+		CanonicalOrder: 6,
+		Category:       metadata.CategoryDeadSeaScrolls,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "1QapGen — Aramaic retelling and expansion of Genesis narratives.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("jud/dss/dss07.htm"),
+		},
+	},
+	{
+		Title:          "Damascus Document",
 		CanonicalOrder: 7,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Commentary on the book of Habakkuk.",
+		Notes:          "CD — legal text governing community life; also found in Cairo Geniza.",
+		Sources: []metadata.SourceRef{
+			sacredTexts("jud/dss/dss06.htm"),
+		},
+	},
+	{
+		Title:          "Habakkuk Commentary",
+		CanonicalOrder: 8,
+		Category:       metadata.CategoryDeadSeaScrolls,
+		Language:       "en",
+		License:        "Public Domain",
+		Notes:          "1QpHab — Pesher Habakkuk; commentary on the book of Habakkuk.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss09.htm"),
 		},
 	},
 	{
-		Title:          "The Copper Scroll (3Q15)",
-		CanonicalOrder: 8,
-		Category:       metadata.CategoryDeadSeaScrolls,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Unique list of hidden treasure locations.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("jud/dss/dss10.htm"),
-		},
-	},
-	{
-		Title:          "Songs of the Sabbath Sacrifice (4QShirShabb)",
+		Title:          "Some Precepts of the Law",
 		CanonicalOrder: 9,
 		Category:       metadata.CategoryDeadSeaScrolls,
 		Language:       "en",
 		License:        "Public Domain",
-		Notes:          "Angelic liturgy for the first thirteen Sabbaths.",
-		Sources: []metadata.SourceRef{
-			sacredTexts("jud/dss/dss11.htm"),
-		},
-	},
-	{
-		Title:          "MMT - Some Works of the Torah (4QMMT)",
-		CanonicalOrder: 10,
-		Category:       metadata.CategoryDeadSeaScrolls,
-		Language:       "en",
-		License:        "Public Domain",
-		Notes:          "Halakhic letter outlining points of legal disagreement.",
+		Notes:          "4QMMT — Miqsat Ma'ase ha-Torah; halakhic letter outlining legal disagreements.",
 		Sources: []metadata.SourceRef{
 			sacredTexts("jud/dss/dss12.htm"),
 		},
