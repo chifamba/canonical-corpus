@@ -2,3 +2,5 @@ logs/
 dist/
 *.exe
 corpus/
+input/
+corpus-builder

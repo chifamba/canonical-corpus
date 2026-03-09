@@ -11,11 +11,18 @@ import (
 	"golang.org/x/net/html"
 )
 
-// ParsedText represents extracted text from a source.
+// ParsedText represents extracted text from a single source.
 type ParsedText struct {
 	Title   string
 	Content string
 	Lang    string
+}
+
+// ParsedBook represents a single book extracted from a multi-book source (like a full Bible JSON).
+type ParsedBook struct {
+	Number  int
+	Title   string
+	Content string
 }
 
 // Parse auto-detects format from contentType and explicit hint, then extracts text.
@@ -186,6 +193,22 @@ func parseXML(data []byte) (*ParsedText, error) {
 
 // parseJSON traverses a JSON value tree and collects all string leaves.
 func parseJSON(data []byte) (*ParsedText, error) {
+	// First, try parsing as Bible SuperSearch API format.
+	if text, err := parseSuperSearchJSON(data); err == nil && text.Content != "" {
+		return text, nil
+	}
+
+	// Try parsing as Bible SuperSearch Exported format (manual download).
+	// Since this format returns multiple books, we'll just join them for the generic parser.
+	if books, _, err := ParseExportedJSON(data); err == nil && len(books) > 0 {
+		var buf strings.Builder
+		for _, b := range books {
+			buf.WriteString(b.Content)
+			buf.WriteString("\n\n")
+		}
+		return &ParsedText{Content: strings.TrimSpace(buf.String())}, nil
+	}
+
 	dec := json.NewDecoder(bytes.NewReader(data))
 	var buf strings.Builder
 
@@ -217,4 +240,190 @@ func parseJSON(data []byte) (*ParsedText, error) {
 	}
 
 	return &ParsedText{Content: strings.TrimSpace(buf.String())}, nil
+}
+
+// ExportedJSON represents the format of manually downloaded Bible SuperSearch files.
+type ExportedJSON struct {
+	Metadata struct {
+		Name      string `json:"name"`
+		Shortname string `json:"shortname"`
+		Module    string `json:"module"`
+		Year      string `json:"year"`
+		Language  string `json:"lang"`
+	} `json:"metadata"`
+	Verses []struct {
+		BookName string `json:"book_name"`
+		Book     int    `json:"book"`
+		Chapter  int    `json:"chapter"`
+		Verse    int    `json:"verse"`
+		Text     string `json:"text"`
+	} `json:"verses"`
+}
+
+// ParseExportedJSON parses the "exported" JSON format from manual downloads.
+// Returns a slice of ParsedBooks and the language code.
+func ParseExportedJSON(data []byte) ([]ParsedBook, string, error) {
+	var exported ExportedJSON
+	if err := json.Unmarshal(data, &exported); err != nil {
+		return nil, "", err
+	}
+
+	if len(exported.Verses) == 0 {
+		return nil, "", fmt.Errorf("no verses in exported json")
+	}
+
+	var books []ParsedBook
+	var currentBook *ParsedBook
+	var buf strings.Builder
+	var lastChapter int
+	var lastBookNum int
+
+	for _, v := range exported.Verses {
+		if currentBook == nil || v.Book != lastBookNum {
+			if currentBook != nil {
+				currentBook.Content = strings.TrimSpace(buf.String())
+				books = append(books, *currentBook)
+			}
+			buf.Reset()
+			currentBook = &ParsedBook{
+				Number: v.Book,
+				Title:  v.BookName,
+			}
+			lastBookNum = v.Book
+			lastChapter = v.Chapter
+		} else if v.Chapter != lastChapter {
+			if buf.Len() > 0 {
+				buf.WriteString("\n\n")
+			}
+			lastChapter = v.Chapter
+		} else if buf.Len() > 0 {
+			buf.WriteString(" ")
+		}
+		buf.WriteString(strings.TrimSpace(v.Text))
+	}
+
+	if currentBook != nil {
+		currentBook.Content = strings.TrimSpace(buf.String())
+		books = append(books, *currentBook)
+	}
+
+	return books, exported.Metadata.Language, nil
+}
+
+// ParseBibleXML parses the common XML format found in many Bible repositories.
+// Structure: <bible><testament><book number="X"><chapter number="Y"><verse number="Z">Text</verse>...
+func ParseBibleXML(data []byte) ([]ParsedBook, string, error) {
+	type XMLVerse struct {
+		Number int    `xml:"number,attr"`
+		Text   string `xml:",chardata"`
+	}
+	type XMLChapter struct {
+		Number int        `xml:"number,attr"`
+		Verses []XMLVerse `xml:"verse"`
+	}
+	type XMLBook struct {
+		Number   int          `xml:"number,attr"`
+		Name     string       `xml:"name,attr"`
+		Chapters []XMLChapter `xml:"chapter"`
+	}
+	type XMLTestament struct {
+		Books []XMLBook `xml:"book"`
+	}
+	type XMLBible struct {
+		Translation string         `xml:"translation,attr"`
+		Testaments  []XMLTestament `xml:"testament"`
+		Books       []XMLBook      `xml:"book"`
+	}
+
+	var bible XMLBible
+	if err := xml.Unmarshal(data, &bible); err != nil {
+		return nil, "", err
+	}
+
+	var books []ParsedBook
+	processBooks := func(xmlBooks []XMLBook) {
+		for _, b := range xmlBooks {
+			var buf strings.Builder
+			for _, c := range b.Chapters {
+				for _, v := range c.Verses {
+					if buf.Len() > 0 {
+						if v.Number == 1 && buf.String()[buf.Len()-1] != '\n' {
+							buf.WriteString("\n\n")
+						} else if buf.String()[buf.Len()-1] != '\n' {
+							buf.WriteString(" ")
+						}
+					}
+					buf.WriteString(strings.TrimSpace(v.Text))
+				}
+				buf.WriteString("\n\n")
+			}
+			books = append(books, ParsedBook{
+				Number:  b.Number,
+				Title:   b.Name,
+				Content: strings.TrimSpace(buf.String()),
+			})
+		}
+	}
+
+	for _, t := range bible.Testaments {
+		processBooks(t.Books)
+	}
+	processBooks(bible.Books)
+
+	return books, "", nil
+}
+
+// parseSuperSearchJSON handles the specific JSON format from api.biblesupersearch.com.
+func parseSuperSearchJSON(data []byte) (*ParsedText, error) {
+	var resp struct {
+		Results []struct {
+			Verses map[string]map[string]map[string]struct {
+				Text string `json:"text"`
+			} `json:"verses"`
+		} `json:"results"`
+	}
+
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
+	}
+
+	if len(resp.Results) == 0 {
+		return nil, fmt.Errorf("no results in bible supersearch json")
+	}
+
+	var buf strings.Builder
+	// The API returns chapters and verses as keys. We need to sort them or at least
+	// iterate consistently. Since they are strings in JSON, we'll try to reconstruct.
+	for _, result := range resp.Results {
+		for _, chapters := range result.Verses {
+			// We need a stable order for chapters and verses.
+			// The keys are "1", "2", "3" etc.
+			for c := 1; c <= 200; c++ {
+				chapterKey := fmt.Sprintf("%d", c)
+				verses, ok := chapters[chapterKey]
+				if !ok {
+					continue
+				}
+				for v := 1; v <= 200; v++ {
+					verseKey := fmt.Sprintf("%d", v)
+					verseData, ok := verses[verseKey]
+					if !ok {
+						continue
+					}
+					if buf.Len() > 0 {
+						buf.WriteString(" ")
+					}
+					buf.WriteString(strings.TrimSpace(verseData.Text))
+				}
+				buf.WriteString("\n\n")
+			}
+		}
+	}
+
+	content := strings.TrimSpace(buf.String())
+	if content == "" {
+		return nil, fmt.Errorf("extracted content is empty")
+	}
+
+	return &ParsedText{Content: content}, nil
 }

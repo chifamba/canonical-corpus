@@ -3,6 +3,8 @@ package compiler
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/chifamba/canonical-corpus/internal/progress"
 	"github.com/chifamba/canonical-corpus/internal/ratelimiter"
 	"github.com/chifamba/canonical-corpus/pkg/markdown"
+	"github.com/chifamba/canonical-corpus/sources"
 	"go.uber.org/zap"
 )
 
@@ -39,8 +42,8 @@ func New(dl *downloader.Downloader, rl *ratelimiter.RateLimiter, mw *markdown.Wr
 	}
 	return &Compiler{
 		downloader:     dl,
-		rateLimiter:    rl,
-		markdownWriter: mw,
+	rateLimiter:    rl,
+	markdownWriter: mw,
 		logger:         logger,
 		outputDir:      outputDir,
 		progress:       prog,
@@ -53,6 +56,108 @@ func progressKey(book metadata.BookMeta) string {
 	dirName := fmt.Sprintf("%03d-%s", book.CanonicalOrder, markdown.SanitizeTitle(book.Title))
 	filename := markdown.BuildFilename(book.Language, book.TranslationID)
 	return fmt.Sprintf("%s/%s/%s", string(book.Category), dirName, filename)
+}
+
+// ImportLocalBibles recursively scans inputDir for JSON bibles and imports them.
+func (c *Compiler) ImportLocalBibles(ctx context.Context, inputDir string) error {
+	if _, err := os.Stat(inputDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	return filepath.Walk(inputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if info.IsDir() || (ext != ".json" && ext != ".xml") {
+			return nil
+		}
+
+		c.logger.Info("importing local bible file", zap.String("path", path))
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("reading local bible %q: %w", path, err)
+		}
+
+		var books []parser.ParsedBook
+		var lang string
+
+		if filepath.Ext(path) == ".json" {
+			books, lang, err = parser.ParseExportedJSON(data)
+		} else if filepath.Ext(path) == ".xml" {
+			books, lang, err = parser.ParseBibleXML(data)
+		}
+
+		if err != nil || len(books) == 0 {
+			// Not a valid bible file, skip or log.
+			c.logger.Warn("skipping non-bible file", zap.String("path", path), zap.Error(err))
+			return nil
+		}
+
+		translationID := strings.ToLower(filepath.Base(path[:len(path)-len(filepath.Ext(path))]))
+
+		// Try to fix language if it's empty or too long.
+		if len(lang) > 3 || lang == "" {
+			// Extract from path if possible, e.g. input/bibles_json/EN-English/...
+			parts := strings.Split(path, string(os.PathSeparator))
+			for _, p := range parts {
+				// Check for EN-English style.
+				if strings.Contains(p, "-") {
+					code := strings.Split(p, "-")[0]
+					if len(code) >= 2 && len(code) <= 3 {
+						lang = strings.ToLower(code)
+						break
+					}
+				}
+			}
+			if lang == "" {
+				// Check parent directory name, e.g. input/shona/sna1949.xml
+				parent := filepath.Base(filepath.Dir(path))
+				if parent == "shona" || parent == "sn" {
+					lang = "sn"
+				}
+			}
+		}
+
+		for _, b := range books {
+			c.logger.Info("importing book from local file", 
+				zap.String("title", b.Title), 
+				zap.Int("order", b.Number),
+				zap.String("translation", translationID),
+				zap.String("lang", lang))
+			meta := metadata.BookMeta{
+				Title:          b.Title,
+				CanonicalOrder: b.Number,
+				Category:       metadata.CategoryCanonical,
+				Language:       lang,
+				TranslationID:  translationID,
+				License:        "Public Domain / Freely Licensed",
+				DateCollected:  info.ModTime().UTC(),
+			}
+
+			// Try to find English title for canonical books to normalize directories.
+			if canonical, ok := sources.FindBookByOrder(b.Number); ok {
+				meta.Title = canonical.Title
+			}
+
+			normalized := normalizer.Normalize(b.Content)
+			normalized = normalizer.DeduplicatePassages(normalized)
+
+			doc := &metadata.Document{
+				Meta:    meta,
+				Content: normalized,
+			}
+
+			key := progressKey(meta)
+			if err := c.markdownWriter.Write(doc); err != nil {
+				return fmt.Errorf("writing imported book %q from %q: %w", b.Title, path, err)
+			}
+			_ = c.progress.MarkComplete(key)
+		}
+
+		return nil
+	})
 }
 
 // CompileBook fetches all sources for a book, parses, normalizes, and writes output.

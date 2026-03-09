@@ -2,7 +2,12 @@
 // public-domain source URLs.
 package sources
 
-import "github.com/chifamba/canonical-corpus/internal/metadata"
+import (
+	"fmt"
+	"net/url"
+
+	"github.com/chifamba/canonical-corpus/internal/metadata"
+)
 
 // ---------------------------------------------------------------------------
 // Source-reference helpers
@@ -97,9 +102,51 @@ func shonaSource(abbr string) metadata.SourceRef {
 	}
 }
 
+func superSearchSource(module, bookName string) metadata.SourceRef {
+	return metadata.SourceRef{
+		URL:     fmt.Sprintf("https://api.biblesupersearch.com/api?bible=%s&reference=%s", module, url.QueryEscape(bookName)),
+		Format:  "json",
+		License: "Public Domain / Freely Licensed",
+		Notes:   "Fetched via Bible SuperSearch API",
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Book-entry builders  (one per translation)
 // ---------------------------------------------------------------------------
+
+func genericSuperSearchBook(order int, title, module, lang, notes string) metadata.BookMeta {
+	return metadata.BookMeta{
+		Title:          title,
+		CanonicalOrder: order,
+		Category:       metadata.CategoryCanonical,
+		Language:       lang,
+		TranslationID:  module,
+		License:        "Public Domain / Freely Licensed",
+		Notes:          notes,
+		Sources:        []metadata.SourceRef{superSearchSource(module, title)},
+	}
+}
+
+// yltBook returns a Young's Literal Translation book.
+func yltBook(order int, title string) metadata.BookMeta {
+	return genericSuperSearchBook(order, title, "ylt", "en", "Young's Literal Translation (1862/1898)")
+}
+
+// dbtBook returns a Darby Bible book.
+func dbtBook(order int, title string) metadata.BookMeta {
+	return genericSuperSearchBook(order, title, "dbt", "en", "Darby Bible (1890)")
+}
+
+// drbBook returns a Douay-Rheims Bible book.
+func drbBook(order int, title string) metadata.BookMeta {
+	return genericSuperSearchBook(order, title, "drb", "en", "Douay-Rheims Bible (1899)")
+}
+
+// trBook returns a Textus Receptus (Greek) book.
+func trBook(order int, title string) metadata.BookMeta {
+	return genericSuperSearchBook(order, title, "tr", "el", "Textus Receptus Greek New Testament")
+}
 
 // kjvBook returns a canonical KJV entry sourced from Wikisource.
 func kjvBook(order int, title, wsPath string, extra ...metadata.SourceRef) metadata.BookMeta {
@@ -173,6 +220,45 @@ func hebrewBook(order int, title, mmCode string) metadata.BookMeta {
 	}
 }
 
+// wlcBook returns a canonical Hebrew Masoretic Text entry representing the WLC.
+func wlcBook(order int, title, mmCode string) metadata.BookMeta {
+	return metadata.BookMeta{
+		Title:          title,
+		CanonicalOrder: order,
+		Category:       metadata.CategoryCanonical,
+		Language:       "he",
+		TranslationID:  "wlc",
+		License:        "Public Domain",
+		Notes:          "Westminster Leningrad Codex (WLC) via Mechon Mamre",
+		Sources:        []metadata.SourceRef{mechonMamre(mmCode)},
+	}
+}
+
+func sblgSource(filename string) metadata.SourceRef {
+	return metadata.SourceRef{
+		URL:      "https://raw.githubusercontent.com/Faithlife/SBLGNT/master/data/sblgnt/text/" + filename,
+		Format:   "txt",
+		Language: "el",
+		License:  "CC-BY 4.0",
+		Notes:    "SBL Greek New Testament",
+	}
+}
+
+// sblgBook returns a canonical SBL Greek New Testament entry.
+func sblgBook(order int, title, filename string) metadata.BookMeta {
+	return metadata.BookMeta{
+		Title:          title,
+		CanonicalOrder: order,
+		Category:       metadata.CategoryCanonical,
+		Language:       "el",
+		TranslationID:  "sblg",
+		License:        "CC-BY 4.0",
+		Translator:     "Michael W. Holmes (SBL/Logos)",
+		Notes:          "SBL Greek New Testament",
+		Sources:        []metadata.SourceRef{sblgSource(filename)},
+	}
+}
+
 // shonaBook returns a canonical Shona Bible entry from eBible.org.
 func shonaBook(order int, title, abbr string) metadata.BookMeta {
 	return metadata.BookMeta{
@@ -180,9 +266,10 @@ func shonaBook(order int, title, abbr string) metadata.BookMeta {
 		CanonicalOrder: order,
 		Category:       metadata.CategoryCanonical,
 		Language:       "sn",
-		TranslationID:  "bdb",
-		License:        "Public Domain",
-		Notes:          "Bhaibheri Dzvene (BDB) — Shona public-domain Bible translation",
+		TranslationID:  "sna",
+		License:        "CC BY-SA 4.0",
+		Translator:     "Biblica, Inc.",
+		Notes:          "Biblica® Bhaibheri Dzvene Rakasununguka MuChiShona Chanhasi 2017",
 		Sources:        []metadata.SourceRef{shonaSource(abbr)},
 	}
 }
@@ -538,6 +625,52 @@ var hebrewCanonicalBooks = []metadata.BookMeta{
 }
 
 // ---------------------------------------------------------------------------
+// Canonical Books — WLC (Westminster Leningrad Codex, same 39 books)
+// ---------------------------------------------------------------------------
+
+var wlcCanonicalBooks = []metadata.BookMeta{
+	wlcBook(1, "Genesis", "01"),
+	wlcBook(2, "Exodus", "02"),
+	wlcBook(3, "Leviticus", "03"),
+	wlcBook(4, "Numbers", "04"),
+	wlcBook(5, "Deuteronomy", "05"),
+	wlcBook(6, "Joshua", "06"),
+	wlcBook(7, "Judges", "07"),
+	wlcBook(8, "Ruth", "33"),
+	wlcBook(9, "1 Samuel", "08"),
+	wlcBook(10, "2 Samuel", "09"),
+	wlcBook(11, "1 Kings", "10"),
+	wlcBook(12, "2 Kings", "11"),
+	wlcBook(13, "1 Chronicles", "27"),
+	wlcBook(14, "2 Chronicles", "28"),
+	wlcBook(15, "Ezra", "38"),
+	wlcBook(16, "Nehemiah", "39"),
+	wlcBook(17, "Esther", "36"),
+	wlcBook(18, "Job", "31"),
+	wlcBook(19, "Psalms", "29"),
+	wlcBook(20, "Proverbs", "30"),
+	wlcBook(21, "Ecclesiastes", "35"),
+	wlcBook(22, "Song of Solomon", "32"),
+	wlcBook(23, "Isaiah", "12"),
+	wlcBook(24, "Jeremiah", "13"),
+	wlcBook(25, "Lamentations", "34"),
+	wlcBook(26, "Ezekiel", "14"),
+	wlcBook(27, "Daniel", "37"),
+	wlcBook(28, "Hosea", "15"),
+	wlcBook(29, "Joel", "16"),
+	wlcBook(30, "Amos", "17"),
+	wlcBook(31, "Obadiah", "18"),
+	wlcBook(32, "Jonah", "19"),
+	wlcBook(33, "Micah", "20"),
+	wlcBook(34, "Nahum", "21"),
+	wlcBook(35, "Habakkuk", "22"),
+	wlcBook(36, "Zephaniah", "23"),
+	wlcBook(37, "Haggai", "24"),
+	wlcBook(38, "Zechariah", "25"),
+	wlcBook(39, "Malachi", "26"),
+}
+
+// ---------------------------------------------------------------------------
 // Canonical Books — Shona (Bhaibheri Dzvene, full 66-book canon)
 // ---------------------------------------------------------------------------
 
@@ -610,6 +743,116 @@ var shonaCanonicalBooks = []metadata.BookMeta{
 	shonaBook(64, "3 John", "3JO"),
 	shonaBook(65, "Jude", "JUD"),
 	shonaBook(66, "Revelation", "REV"),
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Books — SBL Greek New Testament (NT only, 27 books)
+// ---------------------------------------------------------------------------
+
+var sblgCanonicalBooks = []metadata.BookMeta{
+	sblgBook(40, "Matthew", "Matt.txt"),
+	sblgBook(41, "Mark", "Mark.txt"),
+	sblgBook(42, "Luke", "Luke.txt"),
+	sblgBook(43, "John", "John.txt"),
+	sblgBook(44, "Acts", "Acts.txt"),
+	sblgBook(45, "Romans", "Rom.txt"),
+	sblgBook(46, "1 Corinthians", "1Cor.txt"),
+	sblgBook(47, "2 Corinthians", "2Cor.txt"),
+	sblgBook(48, "Galatians", "Gal.txt"),
+	sblgBook(49, "Ephesians", "Eph.txt"),
+	sblgBook(50, "Philippians", "Phil.txt"),
+	sblgBook(51, "Colossians", "Col.txt"),
+	sblgBook(52, "1 Thessalonians", "1Thess.txt"),
+	sblgBook(53, "2 Thessalonians", "2Thess.txt"),
+	sblgBook(54, "1 Timothy", "1Tim.txt"),
+	sblgBook(55, "2 Timothy", "2Tim.txt"),
+	sblgBook(56, "Titus", "Titus.txt"),
+	sblgBook(57, "Philemon", "Phlm.txt"),
+	sblgBook(58, "Hebrews", "Heb.txt"),
+	sblgBook(59, "James", "Jas.txt"),
+	sblgBook(60, "1 Peter", "1Pet.txt"),
+	sblgBook(61, "2 Peter", "2Pet.txt"),
+	sblgBook(62, "1 John", "1John.txt"),
+	sblgBook(63, "2 John", "2John.txt"),
+	sblgBook(64, "3 John", "3John.txt"),
+	sblgBook(65, "Jude", "Jude.txt"),
+	sblgBook(66, "Revelation", "Rev.txt"),
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Books — Young's Literal Translation (Full 66-book canon)
+// ---------------------------------------------------------------------------
+
+var yltCanonicalBooks = []metadata.BookMeta{
+	yltBook(1, "Genesis"), yltBook(2, "Exodus"), yltBook(3, "Leviticus"), yltBook(4, "Numbers"), yltBook(5, "Deuteronomy"),
+	yltBook(6, "Joshua"), yltBook(7, "Judges"), yltBook(8, "Ruth"), yltBook(9, "1 Samuel"), yltBook(10, "2 Samuel"),
+	yltBook(11, "1 Kings"), yltBook(12, "2 Kings"), yltBook(13, "1 Chronicles"), yltBook(14, "2 Chronicles"), yltBook(15, "Ezra"),
+	yltBook(16, "Nehemiah"), yltBook(17, "Esther"), yltBook(18, "Job"), yltBook(19, "Psalms"), yltBook(20, "Proverbs"),
+	yltBook(21, "Ecclesiastes"), yltBook(22, "Song of Solomon"), yltBook(23, "Isaiah"), yltBook(24, "Jeremiah"), yltBook(25, "Lamentations"),
+	yltBook(26, "Ezekiel"), yltBook(27, "Daniel"), yltBook(28, "Hosea"), yltBook(29, "Joel"), yltBook(30, "Amos"),
+	yltBook(31, "Obadiah"), yltBook(32, "Jonah"), yltBook(33, "Micah"), yltBook(34, "Nahum"), yltBook(35, "Habakkuk"),
+	yltBook(36, "Zephaniah"), yltBook(37, "Haggai"), yltBook(38, "Zechariah"), yltBook(39, "Malachi"),
+	yltBook(40, "Matthew"), yltBook(41, "Mark"), yltBook(42, "Luke"), yltBook(43, "John"), yltBook(44, "Acts"),
+	yltBook(45, "Romans"), yltBook(46, "1 Corinthians"), yltBook(47, "2 Corinthians"), yltBook(48, "Galatians"), yltBook(49, "Ephesians"),
+	yltBook(50, "Philippians"), yltBook(51, "Colossians"), yltBook(52, "1 Thessalonians"), yltBook(53, "2 Thessalonians"), yltBook(54, "1 Timothy"),
+	yltBook(55, "2 Timothy"), yltBook(56, "Titus"), yltBook(57, "Philemon"), yltBook(58, "Hebrews"), yltBook(59, "James"),
+	yltBook(60, "1 Peter"), yltBook(61, "2 Peter"), yltBook(62, "1 John"), yltBook(63, "2 John"), yltBook(64, "3 John"),
+	yltBook(65, "Jude"), yltBook(66, "Revelation"),
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Books — Darby Bible (Full 66-book canon)
+// ---------------------------------------------------------------------------
+
+var dbtCanonicalBooks = []metadata.BookMeta{
+	dbtBook(1, "Genesis"), dbtBook(2, "Exodus"), dbtBook(3, "Leviticus"), dbtBook(4, "Numbers"), dbtBook(5, "Deuteronomy"),
+	dbtBook(6, "Joshua"), dbtBook(7, "Judges"), dbtBook(8, "Ruth"), dbtBook(9, "1 Samuel"), dbtBook(10, "2 Samuel"),
+	dbtBook(11, "1 Kings"), dbtBook(12, "2 Kings"), dbtBook(13, "1 Chronicles"), dbtBook(14, "2 Chronicles"), dbtBook(15, "Ezra"),
+	dbtBook(16, "Nehemiah"), dbtBook(17, "Esther"), dbtBook(18, "Job"), dbtBook(19, "Psalms"), dbtBook(20, "Proverbs"),
+	dbtBook(21, "Ecclesiastes"), dbtBook(22, "Song of Solomon"), dbtBook(23, "Isaiah"), dbtBook(24, "Jeremiah"), dbtBook(25, "Lamentations"),
+	dbtBook(26, "Ezekiel"), dbtBook(27, "Daniel"), dbtBook(28, "Hosea"), dbtBook(29, "Joel"), dbtBook(30, "Amos"),
+	dbtBook(31, "Obadiah"), dbtBook(32, "Jonah"), dbtBook(33, "Micah"), dbtBook(34, "Nahum"), dbtBook(35, "Habakkuk"),
+	dbtBook(36, "Zephaniah"), dbtBook(37, "Haggai"), dbtBook(38, "Zechariah"), dbtBook(39, "Malachi"),
+	dbtBook(40, "Matthew"), dbtBook(41, "Mark"), dbtBook(42, "Luke"), dbtBook(43, "John"), dbtBook(44, "Acts"),
+	dbtBook(45, "Romans"), dbtBook(46, "1 Corinthians"), dbtBook(47, "2 Corinthians"), dbtBook(48, "Galatians"), dbtBook(49, "Ephesians"),
+	dbtBook(50, "Philippians"), dbtBook(51, "Colossians"), dbtBook(52, "1 Thessalonians"), dbtBook(53, "2 Thessalonians"), dbtBook(54, "1 Timothy"),
+	dbtBook(55, "2 Timothy"), dbtBook(56, "Titus"), dbtBook(57, "Philemon"), dbtBook(58, "Hebrews"), dbtBook(59, "James"),
+	dbtBook(60, "1 Peter"), dbtBook(61, "2 Peter"), dbtBook(62, "1 John"), dbtBook(63, "2 John"), dbtBook(64, "3 John"),
+	dbtBook(65, "Jude"), dbtBook(66, "Revelation"),
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Books — Douay-Rheims Bible (Full 66-book canon)
+// ---------------------------------------------------------------------------
+
+var drbCanonicalBooks = []metadata.BookMeta{
+	drbBook(1, "Genesis"), drbBook(2, "Exodus"), drbBook(3, "Leviticus"), drbBook(4, "Numbers"), drbBook(5, "Deuteronomy"),
+	drbBook(6, "Joshua"), drbBook(7, "Judges"), drbBook(8, "Ruth"), drbBook(9, "1 Samuel"), drbBook(10, "2 Samuel"),
+	drbBook(11, "1 Kings"), drbBook(12, "2 Kings"), drbBook(13, "1 Chronicles"), drbBook(14, "2 Chronicles"), drbBook(15, "Ezra"),
+	drbBook(16, "Nehemiah"), drbBook(17, "Esther"), drbBook(18, "Job"), drbBook(19, "Psalms"), drbBook(20, "Proverbs"),
+	drbBook(21, "Ecclesiastes"), drbBook(22, "Song of Solomon"), drbBook(23, "Isaiah"), drbBook(24, "Jeremiah"), drbBook(25, "Lamentations"),
+	drbBook(26, "Ezekiel"), drbBook(27, "Daniel"), drbBook(28, "Hosea"), drbBook(29, "Joel"), drbBook(30, "Amos"),
+	drbBook(31, "Obadiah"), drbBook(32, "Jonah"), drbBook(33, "Micah"), drbBook(34, "Nahum"), drbBook(35, "Habakkuk"),
+	drbBook(36, "Zephaniah"), drbBook(37, "Haggai"), drbBook(38, "Zechariah"), drbBook(39, "Malachi"),
+	drbBook(40, "Matthew"), drbBook(41, "Mark"), drbBook(42, "Luke"), drbBook(43, "John"), drbBook(44, "Acts"),
+	drbBook(45, "Romans"), drbBook(46, "1 Corinthians"), drbBook(47, "2 Corinthians"), drbBook(48, "Galatians"), drbBook(49, "Ephesians"),
+	drbBook(50, "Philippians"), drbBook(51, "Colossians"), drbBook(52, "1 Thessalonians"), drbBook(53, "2 Thessalonians"), drbBook(54, "1 Timothy"),
+	drbBook(55, "2 Timothy"), drbBook(56, "Titus"), drbBook(57, "Philemon"), drbBook(58, "Hebrews"), drbBook(59, "James"),
+	drbBook(60, "1 Peter"), drbBook(61, "2 Peter"), drbBook(62, "1 John"), drbBook(63, "2 John"), drbBook(64, "3 John"),
+	drbBook(65, "Jude"), drbBook(66, "Revelation"),
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Books — Textus Receptus Greek (NT only, 27 books)
+// ---------------------------------------------------------------------------
+
+var trCanonicalBooks = []metadata.BookMeta{
+	trBook(40, "Matthew"), trBook(41, "Mark"), trBook(42, "Luke"), trBook(43, "John"), trBook(44, "Acts"),
+	trBook(45, "Romans"), trBook(46, "1 Corinthians"), trBook(47, "2 Corinthians"), trBook(48, "Galatians"), trBook(49, "Ephesians"),
+	trBook(50, "Philippians"), trBook(51, "Colossians"), trBook(52, "1 Thessalonians"), trBook(53, "2 Thessalonians"), trBook(54, "1 Timothy"),
+	trBook(55, "2 Timothy"), trBook(56, "Titus"), trBook(57, "Philemon"), trBook(58, "Hebrews"), trBook(59, "James"),
+	trBook(60, "1 Peter"), trBook(61, "2 Peter"), trBook(62, "1 John"), trBook(63, "2 John"), trBook(64, "3 John"),
+	trBook(65, "Jude"), trBook(66, "Revelation"),
 }
 
 // ---------------------------------------------------------------------------
@@ -1101,6 +1344,12 @@ func CanonicalBooks() []metadata.BookMeta {
 	out = append(out, greekCanonicalBooks...)
 	out = append(out, hebrewCanonicalBooks...)
 	out = append(out, shonaCanonicalBooks...)
+	out = append(out, wlcCanonicalBooks...)
+	out = append(out, sblgCanonicalBooks...)
+	out = append(out, yltCanonicalBooks...)
+	out = append(out, dbtCanonicalBooks...)
+	out = append(out, drbCanonicalBooks...)
+	out = append(out, trCanonicalBooks...)
 	return out
 }
 
@@ -1181,5 +1430,16 @@ func AllLanguageCodes() []string {
 		}
 	}
 	return codes
+}
+
+// FindBookByOrder returns the metadata for a canonical book by its order (1-66).
+// It returns only the first match (usually KJV) to get an English title.
+func FindBookByOrder(order int) (metadata.BookMeta, bool) {
+	for _, b := range CanonicalBooks() {
+		if b.CanonicalOrder == order {
+			return b, true
+		}
+	}
+	return metadata.BookMeta{}, false
 }
 

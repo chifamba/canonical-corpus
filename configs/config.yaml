@@ -2,6 +2,8 @@ downloader:
   max_retries: 5
   timeout: 30s
   user_agent: "CorpusBuilder/1.0 (+https://github.com/chifamba/canonical-corpus)"
+  blacklisted_hosts:
+    - "mechon-mamre.org"
 
 rate_limiter:
   max_requests_per_host: 2

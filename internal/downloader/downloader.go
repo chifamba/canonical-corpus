@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,9 +23,10 @@ const defaultUserAgent = "CorpusBuilder/1.0 (+https://github.com/chifamba/canoni
 
 // Config holds downloader configuration.
 type Config struct {
-	MaxRetries int
-	Timeout    time.Duration
-	UserAgent  string
+	MaxRetries       int
+	Timeout          time.Duration
+	UserAgent        string
+	BlacklistedHosts []string
 }
 
 // Downloader handles HTTP downloads with robots.txt compliance and rate limiting.
@@ -66,6 +68,13 @@ func (d *Downloader) Fetch(ctx context.Context, rawURL string) ([]byte, string, 
 	}
 	host := parsed.Hostname()
 
+	// Skip URLs from blacklisted hosts.
+	for _, b := range d.config.BlacklistedHosts {
+		if host == b {
+			return nil, "", fmt.Errorf("host %q is blacklisted", host)
+		}
+	}
+
 	allowed, err := d.checkRobots(ctx, rawURL)
 	if err != nil {
 		d.logger.Warn("robots.txt check failed, proceeding",
@@ -84,6 +93,15 @@ func (d *Downloader) Fetch(ctx context.Context, rawURL string) ([]byte, string, 
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt-1))*time.Second +
 				time.Duration(rand.IntN(1000))*time.Millisecond
+
+			// If last error was 429 with Retry-After, use that instead.
+			var httpErr *httpError
+			if fetchErr != nil && errors.As(fetchErr, &httpErr) && httpErr.RetryAfter != "" {
+				if s, err := strconv.Atoi(httpErr.RetryAfter); err == nil {
+					backoff = time.Duration(s) * time.Second
+				}
+			}
+
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
@@ -126,6 +144,11 @@ func (d *Downloader) doFetch(ctx context.Context, rawURL string) ([]byte, string
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		retryAfter := resp.Header.Get("Retry-After")
+		return nil, "", &httpError{StatusCode: resp.StatusCode, RetryAfter: retryAfter}
+	}
+
 	if resp.StatusCode >= 500 {
 		return nil, "", &httpError{StatusCode: resp.StatusCode}
 	}
@@ -163,7 +186,7 @@ func (d *Downloader) checkRobots(ctx context.Context, rawURL string) (bool, erro
 
 		resp, err := d.client.Do(req)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			if resp != nil {
+			if resp != nil && resp.Body != nil {
 				resp.Body.Close()
 			}
 			d.robotsMu.Lock()
@@ -194,6 +217,7 @@ func (d *Downloader) checkRobots(ctx context.Context, rawURL string) (bool, erro
 
 type httpError struct {
 	StatusCode int
+	RetryAfter string
 }
 
 func (e *httpError) Error() string {
@@ -205,13 +229,18 @@ func isRetryable(err error) bool {
 		return false
 	}
 	var httpErr *httpError
-	if errors.As(err, &httpErr) && httpErr.StatusCode >= 500 {
-		return true
+	if errors.As(err, &httpErr) {
+		if httpErr.StatusCode >= 500 || httpErr.StatusCode == http.StatusTooManyRequests {
+			return true
+		}
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		return netErr.Timeout()
 	}
+	if errors.Is(err, io.EOF) {
+		return true
+	}
 	msg := err.Error()
-	return strings.Contains(msg, "connection reset") || strings.Contains(msg, "EOF")
+	return strings.Contains(msg, "connection reset")
 }

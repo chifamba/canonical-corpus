@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/chifamba/canonical-corpus/internal/compiler"
@@ -21,9 +22,10 @@ import (
 // Config holds all application configuration loaded from config.yaml.
 type Config struct {
 	Downloader struct {
-		MaxRetries int           `yaml:"max_retries"`
-		Timeout    time.Duration `yaml:"timeout"`
-		UserAgent  string        `yaml:"user_agent"`
+		MaxRetries       int           `yaml:"max_retries"`
+		Timeout          time.Duration `yaml:"timeout"`
+		UserAgent        string        `yaml:"user_agent"`
+		BlacklistedHosts []string      `yaml:"blacklisted_hosts"`
 	} `yaml:"downloader"`
 	RateLimiter struct {
 		MaxRequestsPerHost float64 `yaml:"max_requests_per_host"`
@@ -58,6 +60,7 @@ from public-domain sources into a structured Markdown corpus.`,
 
 	root.AddCommand(
 		buildCmd(),
+		importCmd(),
 		fetchCmd(),
 		verifyCmd(),
 		exportCmd(),
@@ -109,6 +112,9 @@ func newLogger() (*zap.Logger, error) {
 	}
 
 	if cfg.Logging.File != "" {
+		if err := os.MkdirAll(filepath.Dir(cfg.Logging.File), 0o755); err != nil {
+			return nil, fmt.Errorf("creating log directory: %w", err)
+		}
 		f, err := os.OpenFile(cfg.Logging.File, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err == nil {
 			cores = append(cores, zapcore.NewCore(
@@ -126,9 +132,10 @@ func newLogger() (*zap.Logger, error) {
 func buildDeps(logger *zap.Logger, force bool) *compiler.Compiler {
 	rl := ratelimiter.New(cfg.RateLimiter.MaxRequestsPerHost, cfg.RateLimiter.GlobalConcurrency)
 	dl := downloader.New(downloader.Config{
-		MaxRetries: cfg.Downloader.MaxRetries,
-		Timeout:    cfg.Downloader.Timeout,
-		UserAgent:  cfg.Downloader.UserAgent,
+		MaxRetries:       cfg.Downloader.MaxRetries,
+		Timeout:          cfg.Downloader.Timeout,
+		UserAgent:        cfg.Downloader.UserAgent,
+		BlacklistedHosts: cfg.Downloader.BlacklistedHosts,
 	}, rl, logger)
 	mw := markdown.New(cfg.Output.BaseDir)
 	return compiler.New(dl, rl, mw, cfg.Output.BaseDir, logger, force)
@@ -179,6 +186,7 @@ func buildCmd() *cobra.Command {
 		language      string
 		translationID string
 		force         bool
+		inputDir      string
 	)
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -197,6 +205,12 @@ without affecting already-completed books.`,
 			defer func() { _ = logger.Sync() }()
 
 			comp := buildDeps(logger, force)
+
+			// Automatically import local bibles first.
+			if err := comp.ImportLocalBibles(context.Background(), inputDir); err != nil {
+				logger.Warn("import local bibles failed", zap.Error(err))
+			}
+
 			books := selectBooks(category, language, translationID)
 			if len(books) == 0 {
 				logger.Warn("no books matched the specified filters; nothing to build",
@@ -224,6 +238,34 @@ without affecting already-completed books.`,
 		"translation ID to build (e.g. kjv, web, asv, lxx, hmt, bdb); empty means all")
 	cmd.Flags().BoolVarP(&force, "force", "f", false,
 		"re-compile books that are already marked complete")
+	cmd.Flags().StringVarP(&inputDir, "input", "i", "./input",
+		"directory to scan for local JSON bibles to import")
+	return cmd
+}
+
+func importCmd() *cobra.Command {
+	var (
+		inputDir string
+		force    bool
+	)
+	cmd := &cobra.Command{
+		Use:   "import",
+		Short: "Import local JSON bibles from a directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger, err := newLogger()
+			if err != nil {
+				return err
+			}
+			defer func() { _ = logger.Sync() }()
+
+			comp := buildDeps(logger, force)
+			return comp.ImportLocalBibles(context.Background(), inputDir)
+		},
+	}
+	cmd.Flags().StringVarP(&inputDir, "input", "i", "./input",
+		"directory to scan for local JSON bibles to import")
+	cmd.Flags().BoolVarP(&force, "force", "f", false,
+		"re-compile bibles that are already marked complete")
 	return cmd
 }
 
@@ -245,9 +287,10 @@ func fetchCmd() *cobra.Command {
 
 			rl := ratelimiter.New(cfg.RateLimiter.MaxRequestsPerHost, cfg.RateLimiter.GlobalConcurrency)
 			dl := downloader.New(downloader.Config{
-				MaxRetries: cfg.Downloader.MaxRetries,
-				Timeout:    cfg.Downloader.Timeout,
-				UserAgent:  cfg.Downloader.UserAgent,
+				MaxRetries:       cfg.Downloader.MaxRetries,
+				Timeout:          cfg.Downloader.Timeout,
+				UserAgent:        cfg.Downloader.UserAgent,
+				BlacklistedHosts: cfg.Downloader.BlacklistedHosts,
 			}, rl, logger)
 
 			books := selectBooks(category, language, translationID)
