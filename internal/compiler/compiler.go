@@ -10,6 +10,7 @@ import (
 	"github.com/chifamba/canonical-corpus/internal/metadata"
 	"github.com/chifamba/canonical-corpus/internal/normalizer"
 	"github.com/chifamba/canonical-corpus/internal/parser"
+	"github.com/chifamba/canonical-corpus/internal/progress"
 	"github.com/chifamba/canonical-corpus/internal/ratelimiter"
 	"github.com/chifamba/canonical-corpus/pkg/markdown"
 	"go.uber.org/zap"
@@ -22,22 +23,53 @@ type Compiler struct {
 	markdownWriter *markdown.Writer
 	logger         *zap.Logger
 	outputDir      string
+	// progress tracks which books have already been compiled (for resumable builds).
+	progress *progress.State
+	// force re-compiles books that are already marked complete.
+	force bool
 }
 
 // New creates a new Compiler.
-func New(dl *downloader.Downloader, rl *ratelimiter.RateLimiter, mw *markdown.Writer, outputDir string, logger *zap.Logger) *Compiler {
+// Pass force=true to re-compile books that are already marked as complete.
+func New(dl *downloader.Downloader, rl *ratelimiter.RateLimiter, mw *markdown.Writer, outputDir string, logger *zap.Logger, force bool) *Compiler {
+	prog, err := progress.Load(outputDir)
+	if err != nil {
+		logger.Warn("could not load progress state; falling back to in-memory tracking", zap.Error(err))
+		prog, _ = progress.Load("") // empty baseDir → in-memory only, never fails
+	}
 	return &Compiler{
 		downloader:     dl,
 		rateLimiter:    rl,
 		markdownWriter: mw,
 		logger:         logger,
 		outputDir:      outputDir,
+		progress:       prog,
+		force:          force,
 	}
 }
 
+// progressKey returns the unique key used to track completion of a book.
+func progressKey(book metadata.BookMeta) string {
+	dirName := fmt.Sprintf("%03d-%s", book.CanonicalOrder, markdown.SanitizeTitle(book.Title))
+	filename := markdown.BuildFilename(book.Language, book.TranslationID)
+	return fmt.Sprintf("%s/%s/%s", string(book.Category), dirName, filename)
+}
+
 // CompileBook fetches all sources for a book, parses, normalizes, and writes output.
+// It skips the book if it has already been successfully compiled (unless force=true).
 func (c *Compiler) CompileBook(ctx context.Context, book metadata.BookMeta) error {
-	c.logger.Info("compiling book", zap.String("title", book.Title))
+	key := progressKey(book)
+
+	if !c.force && c.progress.IsComplete(key) {
+		c.logger.Info("skipping already-compiled book",
+			zap.String("title", book.Title),
+			zap.String("translation", book.TranslationID))
+		return nil
+	}
+
+	c.logger.Info("compiling book",
+		zap.String("title", book.Title),
+		zap.String("translation", book.TranslationID))
 
 	var combinedContent strings.Builder
 	for _, src := range book.Sources {
@@ -83,7 +115,14 @@ func (c *Compiler) CompileBook(ctx context.Context, book metadata.BookMeta) erro
 		return fmt.Errorf("writing markdown for %q: %w", book.Title, err)
 	}
 
-	c.logger.Info("compiled book", zap.String("title", book.Title))
+	// Persist completion so a future interrupted run can resume.
+	if err := c.progress.MarkComplete(key); err != nil {
+		c.logger.Warn("could not save progress state", zap.Error(err))
+	}
+
+	c.logger.Info("compiled book",
+		zap.String("title", book.Title),
+		zap.String("translation", book.TranslationID))
 	return nil
 }
 

@@ -28,6 +28,7 @@ type BookMeta struct {
 	CanonicalOrder int         `yaml:"canonical_order"`
 	Category       Category    `yaml:"category"`
 	Language       string      `yaml:"language"`
+	TranslationID  string      `yaml:"translation_id,omitempty"`
 	Sources        []SourceRef `yaml:"sources"`
 	DateCollected  time.Time   `yaml:"date_collected,omitempty"`
 	License        string      `yaml:"license"`
