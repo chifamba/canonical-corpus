@@ -42,7 +42,8 @@ func (w *Writer) Write(doc *metadata.Document) error {
 }
 
 // BuildFilename returns the output filename for a given language and optional translation code.
-// Examples: ("en", "ESV") -> "en-esv.md", ("he", "WLC") -> "he.md", ("el", "") -> "el.md"
+// Examples: ("en", "ESV") -> "en-esv.md", ("en", "NIV") -> "en-niv.md",
+// ("he", "WLC") -> "he-wlc.md", ("el", "LXX") -> "el-lxx.md", ("el", "") -> "el.md"
 func BuildFilename(language, translation string) string {
 	if language == "" {
 		language = "en"
