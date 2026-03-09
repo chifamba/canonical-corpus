@@ -21,7 +21,9 @@ func New(baseDir string) *Writer {
 	return &Writer{baseDir: baseDir}
 }
 
-// Write persists a document as <baseDir>/<category>/<NNN-title>/en.md.
+// Write persists a document as <baseDir>/<category>/<NNN-title>/<lang>-<translationID>.md.
+// When TranslationID is empty the file is named <lang>.md; when both are empty it
+// falls back to "en.md" for backward compatibility.
 func (w *Writer) Write(doc *metadata.Document) error {
 	dirName := fmt.Sprintf("%03d-%s", doc.Meta.CanonicalOrder, SanitizeTitle(doc.Meta.Title))
 	dir := filepath.Join(w.baseDir, string(doc.Meta.Category), dirName)
@@ -29,12 +31,24 @@ func (w *Writer) Write(doc *metadata.Document) error {
 		return fmt.Errorf("creating directory %q: %w", dir, err)
 	}
 
-	outPath := filepath.Join(dir, "en.md")
+	outPath := filepath.Join(dir, BuildFilename(doc.Meta.Language, doc.Meta.TranslationID))
 	content := BuildMarkdown(doc)
 	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("writing file %q: %w", outPath, err)
 	}
 	return nil
+}
+
+// BuildFilename returns the output filename for a given language and translation ID.
+// Examples: "en-kjv.md", "el-lxx.md", "he-hmt.md", "en.md" (legacy).
+func BuildFilename(lang, translationID string) string {
+	if lang != "" && translationID != "" {
+		return lang + "-" + translationID + ".md"
+	}
+	if lang != "" {
+		return lang + ".md"
+	}
+	return "en.md"
 }
 
 // SanitizeTitle converts a book title into a filesystem-safe slug.
@@ -60,6 +74,7 @@ type frontmatter struct {
 	CanonicalOrder int                 `yaml:"canonical_order"`
 	Category       metadata.Category   `yaml:"category"`
 	Language       string              `yaml:"language"`
+	TranslationID  string              `yaml:"translation_id,omitempty"`
 	Sources        []frontmatterSource `yaml:"sources"`
 	DateCollected  string              `yaml:"date_collected,omitempty"`
 	License        string              `yaml:"license"`
@@ -78,6 +93,7 @@ func FormatFrontmatter(meta metadata.BookMeta) string {
 		CanonicalOrder: meta.CanonicalOrder,
 		Category:       meta.Category,
 		Language:       meta.Language,
+		TranslationID:  meta.TranslationID,
 		Sources:        sources,
 		License:        meta.License,
 		Translator:     meta.Translator,
@@ -105,6 +121,9 @@ func BuildMarkdown(doc *metadata.Document) string {
 
 	sb.WriteString("## Metadata\n\n")
 	sb.WriteString(fmt.Sprintf("- **Language**: %s\n", doc.Meta.Language))
+	if doc.Meta.TranslationID != "" {
+		sb.WriteString(fmt.Sprintf("- **Translation**: %s\n", doc.Meta.TranslationID))
+	}
 	if len(doc.Meta.Sources) > 0 {
 		sb.WriteString(fmt.Sprintf("- **Original Source**: %s\n", doc.Meta.Sources[0].URL))
 	}

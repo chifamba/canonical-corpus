@@ -123,7 +123,7 @@ func newLogger() (*zap.Logger, error) {
 }
 
 // buildDeps constructs the compiler dependency graph from the loaded config.
-func buildDeps(logger *zap.Logger) *compiler.Compiler {
+func buildDeps(logger *zap.Logger, force bool) *compiler.Compiler {
 	rl := ratelimiter.New(cfg.RateLimiter.MaxRequestsPerHost, cfg.RateLimiter.GlobalConcurrency)
 	dl := downloader.New(downloader.Config{
 		MaxRetries: cfg.Downloader.MaxRetries,
@@ -131,21 +131,40 @@ func buildDeps(logger *zap.Logger) *compiler.Compiler {
 		UserAgent:  cfg.Downloader.UserAgent,
 	}, rl, logger)
 	mw := markdown.New(cfg.Output.BaseDir)
-	return compiler.New(dl, rl, mw, cfg.Output.BaseDir, logger)
+	return compiler.New(dl, rl, mw, cfg.Output.BaseDir, logger, force)
 }
 
-// selectBooks filters the book catalogue by category flag.
-func selectBooks(category string) []metadata.BookMeta {
+// selectBooks filters the book catalogue by category, language, and/or translation ID.
+// When language or translationID are non-empty they act as additional AND-filters on
+// the category selection, so callers can target a precise subset.
+func selectBooks(category, language, translationID string) []metadata.BookMeta {
+	var base []metadata.BookMeta
 	switch category {
 	case "canonical":
-		return sources.CanonicalBooks()
+		base = sources.CanonicalBooks()
 	case "extra-canonical":
-		return sources.ExtraCanonicalBooks()
+		base = sources.ExtraCanonicalBooks()
 	case "dead-sea-scrolls":
-		return sources.DeadSeaScrollBooks()
+		base = sources.DeadSeaScrollBooks()
 	default:
-		return sources.AllBooks()
+		base = sources.AllBooks()
 	}
+
+	if language == "" && translationID == "" {
+		return base
+	}
+
+	var filtered []metadata.BookMeta
+	for _, b := range base {
+		if language != "" && b.Language != language {
+			continue
+		}
+		if translationID != "" && b.TranslationID != translationID {
+			continue
+		}
+		filtered = append(filtered, b)
+	}
+	return filtered
 }
 
 
@@ -155,10 +174,21 @@ func selectBooks(category string) []metadata.BookMeta {
 // ---------------------------------------------------------------------------
 
 func buildCmd() *cobra.Command {
-	var category string
+	var (
+		category      string
+		language      string
+		translationID string
+		force         bool
+	)
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Fetch, parse, normalize, and export the full corpus",
+		Long: `Fetch, parse, normalize, and write corpus documents.
+
+Completed books are skipped automatically (resumable). Use --force to re-compile
+everything. Filter with --category, --language, or --translation to build only
+a subset — new languages and translations can be added and built independently
+without affecting already-completed books.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger, err := newLogger()
 			if err != nil {
@@ -166,21 +196,43 @@ func buildCmd() *cobra.Command {
 			}
 			defer func() { _ = logger.Sync() }()
 
-			comp := buildDeps(logger)
-			books := selectBooks(category)
+			comp := buildDeps(logger, force)
+			books := selectBooks(category, language, translationID)
+			if len(books) == 0 {
+				logger.Warn("no books matched the specified filters; nothing to build",
+					zap.String("category", category),
+					zap.String("language", language),
+					zap.String("translation", translationID),
+					zap.Strings("known_languages", sources.AllLanguageCodes()),
+					zap.Strings("known_translations", sources.AllTranslationIDs()))
+				return nil
+			}
 			logger.Info("starting build",
 				zap.Int("books", len(books)),
-				zap.String("category", category))
+				zap.String("category", category),
+				zap.String("language", language),
+				zap.String("translation", translationID),
+				zap.Bool("force", force))
 			return comp.CompileAll(context.Background(), books)
 		},
 	}
 	cmd.Flags().StringVarP(&category, "category", "k", "all",
 		"category to build: all | canonical | extra-canonical | dead-sea-scrolls")
+	cmd.Flags().StringVarP(&language, "language", "l", "",
+		"BCP-47 language code to build (e.g. en, el, he, sn); empty means all")
+	cmd.Flags().StringVarP(&translationID, "translation", "t", "",
+		"translation ID to build (e.g. kjv, web, asv, lxx, hmt, bdb); empty means all")
+	cmd.Flags().BoolVarP(&force, "force", "f", false,
+		"re-compile books that are already marked complete")
 	return cmd
 }
 
 func fetchCmd() *cobra.Command {
-	var category string
+	var (
+		category      string
+		language      string
+		translationID string
+	)
 	cmd := &cobra.Command{
 		Use:   "fetch",
 		Short: "Fetch raw source texts without compiling",
@@ -198,8 +250,21 @@ func fetchCmd() *cobra.Command {
 				UserAgent:  cfg.Downloader.UserAgent,
 			}, rl, logger)
 
-			books := selectBooks(category)
-			logger.Info("fetching sources", zap.Int("books", len(books)))
+			books := selectBooks(category, language, translationID)
+			if len(books) == 0 {
+				logger.Warn("no books matched the specified filters; nothing to fetch",
+					zap.String("category", category),
+					zap.String("language", language),
+					zap.String("translation", translationID),
+					zap.Strings("known_languages", sources.AllLanguageCodes()),
+					zap.Strings("known_translations", sources.AllTranslationIDs()))
+				return nil
+			}
+			logger.Info("fetching sources",
+				zap.Int("books", len(books)),
+				zap.String("category", category),
+				zap.String("language", language),
+				zap.String("translation", translationID))
 
 			ctx := context.Background()
 			for _, book := range books {
@@ -221,6 +286,10 @@ func fetchCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&category, "category", "k", "all",
 		"category to fetch: all | canonical | extra-canonical | dead-sea-scrolls")
+	cmd.Flags().StringVarP(&language, "language", "l", "",
+		"BCP-47 language code to fetch (e.g. en, el, he, sn); empty means all")
+	cmd.Flags().StringVarP(&translationID, "translation", "t", "",
+		"translation ID to fetch (e.g. kjv, web, asv, lxx, hmt, bdb); empty means all")
 	return cmd
 }
 
@@ -239,15 +308,19 @@ func verifyCmd() *cobra.Command {
 			missing := 0
 			for _, book := range books {
 				dirName := fmt.Sprintf("%03d-%s", book.CanonicalOrder, markdown.SanitizeTitle(book.Title))
-				path := fmt.Sprintf("%s/%s/%s/en.md",
-					cfg.Output.BaseDir, string(book.Category), dirName)
+				filename := markdown.BuildFilename(book.Language, book.TranslationID)
+				path := fmt.Sprintf("%s/%s/%s/%s",
+					cfg.Output.BaseDir, string(book.Category), dirName, filename)
 				if _, err := os.Stat(path); os.IsNotExist(err) {
 					logger.Warn("missing corpus file",
 						zap.String("book", book.Title),
+						zap.String("translation", book.TranslationID),
 						zap.String("path", path))
 					missing++
 				} else {
-					logger.Info("ok", zap.String("book", book.Title))
+					logger.Info("ok",
+						zap.String("book", book.Title),
+						zap.String("translation", book.TranslationID))
 				}
 			}
 			if missing > 0 {
